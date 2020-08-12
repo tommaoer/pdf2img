@@ -10,6 +10,7 @@ from pdf2image import convert_from_path, convert_from_bytes
 
 input_folder = ''
 output_folder = ''
+img_format = 'png'
 
 pdf_list = []
 def record(folder):
@@ -44,13 +45,12 @@ for idx, pdfname in enumerate(pdf_list):
     filepath,fullflname = os.path.split(path_out_list[idx])
     fname, ext = os.path.splitext(fullflname)
     # images = convert_from_path(pdfname, dpi=200, output_folder=filepath, fmt='png')
-    images = convert_from_path(pdfname, dpi=50, output_folder=filepath, output_file=fname, fmt='jpg')
+    images = convert_from_path(pdfname, dpi=50, output_folder=filepath, output_file=fname, fmt=img_format)
 
-    save_name = os.path.join(filepath, fname+'0001-1.jpg')
-    im = Image.open(save_name)
-    im.save(os.path.join(filepath, fname+'.jpg'))
-    im.close()
-    os.remove(save_name)
+    save_name = os.path.join(filepath, fname+'0001-1.'+img_format)
+    change_name = os.path.join(filepath, fname+'.'+img_format)
+    os.system('mv %s %s' % (save_name, change_name))
+
 
     # print(images.shape)
     # print(images.shape)
