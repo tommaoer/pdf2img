@@ -1,4 +1,4 @@
-function imgscriptv1(ModelFolder)
+function cropimg(ModelFolder)
 
 tarfolder = [ModelFolder,'\crop'];
 if ~exist(tarfolder,'file')
@@ -39,6 +39,10 @@ for i =1:length(pnglist)
     [~,name,suffix] = fileparts(pnglist(i).name);
     if strcmp(suffix,'.png')
         [Y,~,transparency] = imread(fullfile(ModelFolder,pnglist(i).name));
+        if isempty(transparency)
+            transparency = ones(size(Y));
+            transparency = squeeze(transparency(:,:,1));
+        end
         alpha=imcrop(transparency,[xmin,ymin,xmax-xmin+1,ymax-ymin+1]);
         imCropped=imcrop(Y,[xmin,ymin,xmax-xmin+1,ymax-ymin+1]);        
     else
