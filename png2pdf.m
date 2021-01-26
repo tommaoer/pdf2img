@@ -4,7 +4,9 @@ if ~exist(outfolder,'file')
 end
 [Files,Bytes,Names]=dirr([infolder,'\*.png'],'name');
 for i=1:length(Names)
-
+%     if isempty(strfind(Names{i},'crop'))
+%     continue
+%     end
     tmp=Names{i};
     tmp(1:length(infolder))=[];
     savename=[outfolder,tmp(1:end-3),'pdf'];
