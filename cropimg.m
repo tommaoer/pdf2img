@@ -1,6 +1,9 @@
-function cropimg(ModelFolder)
+function cropimg(ModelFolder, tarfolder)
 addpath('./utils')
+if nargin < 2
+    
 tarfolder = [ModelFolder,'\crop'];
+end
 if ~exist(tarfolder,'file')
     mkdir(tarfolder);
 end
@@ -13,6 +16,7 @@ end
 
 if exist(fullfile(ModelFolder,'mask.mat'),'file')
     load(fullfile(ModelFolder,'mask.mat'))
+%     mask.Position = mask.Position + [-150, 840, 400, 400];
     img = imshow(im2double(imread(Names{1})));
 else
     allim = 0;
