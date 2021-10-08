@@ -47,7 +47,7 @@ else
         line([col, col], [1, rows], 'Color', 'r');
     end
     mask = drawrectangle(gca);
-    if (mask.Position(4)-mask.Position(2))*(mask.Position(3)-mask.Position(1))/(rows*columns) > 0.1
+    if (mask.Position(4)-mask.Position(2))*(mask.Position(3)-mask.Position(1))/(rows*columns) > 0.05
         save(fullfile(ModelFolder,'mask.mat'), 'mask')
     end
 end

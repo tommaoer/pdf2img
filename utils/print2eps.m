@@ -19,20 +19,23 @@ function print2eps(name, fig, export_options, varargin)
 %              ".eps" extension is added if not there already. If a path is
 %              not specified, the figure is saved in the current directory.
 %   fig_handle - The handle of the figure to be saved. Default: gcf().
-%   export_options - array or struct of optional scalar values:
-%       bb_padding - Scalar value of amount of padding to add to border around
-%                    the cropped image, in points (if >1) or percent (if <1).
-%                    Can be negative as well as positive; Default: 0
-%       crop       - Cropping flag. Deafult: 0
-%       fontswap   - Whether to swap non-default fonts in figure. Default: true
+%   export_options - array or struct of optional values:
+%       bb_padding    - Scalar value of amount of padding to add to border around
+%                       the cropped image, in points (if >1) or percent (if <1).
+%                       Can be negative as well as positive; Default: 0
+%       crop          - Cropping flag. Deafult: 0
+%       fontswap      - Whether to swap non-default fonts in figure. Default: true
 %       preserve_size - Whether to preserve the figure's PaperSize. Default: false
-%       font_space - Character used to separate font-name terms in the EPS output
-%                    e.g. "Courier New" => "Courier-New". Default: ''
-%                    (available only via the struct alternative)
-%       renderer   - Renderer used to generate bounding-box. Default: 'opengl'
-%                    (available only via the struct alternative)
-%       crop_amounts - 4-element vector of crop amounts: [top,right,bottom,left]
-%                    (available only via the struct alternative)
+%       font_space    - Character used to separate font-name terms in the EPS output
+%                       e.g. "Courier New" => "Courier-New". Default: ''
+%                       (available only via the struct alternative)
+%       renderer      - Renderer used to generate bounding-box. Default: 'opengl'
+%                       (available only via the struct alternative)
+%       crop_amounts  - 4-element vector of crop amounts: [top,right,bottom,left]
+%                       (available only via the struct alternative)
+%       regexprep     - 2-element cell-array of regular-expression replacement in the
+%                       generated EPS. 1st element is the replaced string(s), 2nd is
+%                       the replacement(s) (available only via the struct alternative)
 %   print_options - Additional parameter strings to be passed to the print command
 
 %{
@@ -86,7 +89,7 @@ function print2eps(name, fig, export_options, varargin)
 % 07/07/15: Fixed issue #83: use numeric handles in HG1
 % 22/07/15: Fixed issue #91 (thanks to Carlos Moffat)
 % 28/09/15: Fixed issue #108 (thanks to JacobD10)
-% 01/11/15: Fixed issue #112: optional renderer for bounding-box computation (thanks to Jesús Pestana Puerta)
+% 01/11/15: Fixed issue #112: optional renderer for bounding-box computation (thanks to JesÃºs Pestana Puerta)
 % 21/02/16: Enabled specifying non-automated crop amounts
 % 22/02/16: Better support + backward compatibility for transparency (issue #108)
 % 10/06/16: Fixed issue #159: text handles get cleared by Matlab in the print() command
@@ -103,6 +106,12 @@ function print2eps(name, fig, export_options, varargin)
 % 14/05/19: Made Helvetica the top default font-swap, replacing Courier
 % 12/06/19: Issue #277: Enabled preservation of figure's PaperSize in output PDF/EPS file
 % 06/08/19: Issue #281: only fix patch/textbox color if it's not opaque
+% 15/01/20: Added warning ID for easier suppression by users
+% 20/01/20: Added comment about unsupported patch transparency in some Ghostscript versions (issue #285)
+% 10/12/20: Enabled user-specified regexp replacements in the generated EPS file (issue #324)
+% 11/03/21: Added documentation about export_options.regexprep; added sanity check (issue #324)
+% 21/07/21: Fixed misleading warning message about regexprep field when it's empty (issue #338)
+% 26/08/21: Added a short pause to avoid unintended image cropping (issue #318)
 %}
 
     options = {'-loose'};
@@ -315,6 +324,9 @@ function print2eps(name, fig, export_options, varargin)
         origAlphaColors = eps_maintainAlpha(fig);
     end
 
+    % Ensure that everything is fully rendered, to avoid cropping (issue #318)
+    drawnow; pause(0.01);
+
     % Print to eps file
     print(fig, options{:}, name);
 
@@ -355,7 +367,7 @@ function print2eps(name, fig, export_options, varargin)
 
     % Bail out if EPS post-processing is not possible
     if isempty(fstrm)
-        warning('Loading EPS file failed, so unable to perform post-processing. This is usually because the figure contains a large number of patch objects. Consider exporting to a bitmap format in this case.');
+        warning('YMA:export_fig:EPS','Loading EPS file failed, so unable to perform post-processing. This is usually because the figure contains a large number of patch objects. Consider exporting to a bitmap format in this case.');
         return
     end
 
@@ -459,10 +471,7 @@ function print2eps(name, fig, export_options, varargin)
         for a = update
             set(font_handles(a), 'FontName', fonts{a}, 'FontSize', fonts_size(a));
         end
-    end
 
-    % Replace the font names
-    if ~isempty(font_swap)
         for a = 1:size(font_swap, 2)
             fontName = font_swap{3,a};
             %fontName = fontName(~isspace(font_swap{3,a}));
@@ -531,6 +540,7 @@ function print2eps(name, fig, export_options, varargin)
 
         % 2. Create a bitmap image and use crop_borders to create the relative
         %    bb with respect to the PageBoundingBox
+        drawnow; pause(0.02);  % avoid unintended cropping (issue #318)
         [A, bcol] = print2array(fig, 1, renderer);
         [aa, aa, aa, bb_rel] = crop_borders(A, bcol, bb_padding, crop_amounts); %#ok<ASGLU>
 
@@ -568,8 +578,21 @@ function print2eps(name, fig, export_options, varargin)
     fstrm = regexprep(fstrm, '\n([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) 3 MP\nPP\n\3 \1 \2 3 MP\nPP\n','\n$1 $2 $3 0 0 4 MP\nPP\n');
     fstrm = regexprep(fstrm, '\n([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) ([-\d.]+ [-\d.]+) 3 MP\nPP\n\3 \2 \1 3 MP\nPP\n','\n$1 $2 $3 0 0 4 MP\nPP\n');
 
+    % If user requested a regexprep replacement of string(s), do this now (issue #324)
+    if isstruct(export_options) && isfield(export_options,'regexprep') && ~isempty(export_options.regexprep)  %issue #338
+        try
+            oldStrOrRegexp = export_options.regexprep{1};
+            newStrOrRegexp = export_options.regexprep{2};
+            fstrm = regexprep(fstrm, oldStrOrRegexp, newStrOrRegexp);
+        catch err
+            warning('YMA:export_fig:regexprep', 'Error parsing regexprep: %s', err.message);
+        end
+    end
+
     % Write out the fixed eps file
     read_write_entire_textfile(name, fstrm);
+
+    drawnow; pause(0.01);
 end
 
 function [StoredColors, fstrm, foundFlags] = eps_maintainAlpha(fig, fstrm, StoredColors)
@@ -614,6 +637,8 @@ function [StoredColors, fstrm, foundFlags] = eps_maintainAlpha(fig, fstrm, Store
                 origAlpha = num2str(round(double(origColor(end)) /255,3),'%.3g'); %Convert alpha value for EPS
 
                 %Find and replace the RGBA values within the EPS text fstrm
+                %Note: .setopacityalpha is an unsupported PS extension that croaks in some GS versions (issue #285, https://bugzilla.redhat.com/show_bug.cgi?id=1632030)
+                %      (such cases are caught in eps2pdf.m and corrected by adding the -dNOSAFER Ghosscript option or by removing the .setopacityalpha line)
                 if strcmpi(propName,'Face')
                     oldStr = sprintf(['\n' colorID ' RC\n']);  % ...N\n (removed to fix issue #225)
                     newStr = sprintf(['\n' origRGB ' RC\n' origAlpha ' .setopacityalpha true\n']);  % ...N\n
